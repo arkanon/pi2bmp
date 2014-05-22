@@ -1,0 +1,152 @@
+#!/bin/bash
+
+# Arkanon <arkanon@lsd.org.br>
+# 2014/05/22 Thu 06:37:54
+
+# 𝜋2bmp
+#
+# Método 1: Tendo as primeiras N casas decimais de 𝜋, percorre-as da mais para a menos
+#              significativa agrupando os dígitos decimais em números de 3 dígitos.
+#           Se o valor for menor que 256, considera uma componente RGB, senão, considera
+#              apenas os dois primeiros dígitos.
+#           Repete o processo em tuplas de componentes com 2 ou 3 dígitos, consideradas
+#              pontos de um BMP de WxH pixels, enquanto for possível completar linhas da
+#              imagem com os dígitos dispoiníveis.
+#
+# TODO
+# -- implementar em js+canvas
+
+pi=pi.txt     # print sympy.pi.evalf(pow(10,7)) # 01:20:49
+hd=pi-head.bmp
+bo=pi-body.bmp
+bm=pi.bmp
+
+#W=100        # image width  picels
+#H=100        # image height pixels
+## 00:32:27.530
+
+ W=1440       # image width  picels
+ H=900        # image height pixels
+ # 00:00:00.000
+
+ D=24         # color depth  bits
+ C=$((3*W*H)) # image size   bytes (3 B/px, se D=24)
+ S=$((C+122)) # file  size   bytes
+
+
+
+mkhd()
+# $1 = D
+# $2 = W
+# $3 = H
+# $4 = C
+# $5 = S
+{
+
+  hD=$(printf %02x $1 | sed 's/../&\n/g' | tac | tr '\n' ' ') #       24  ->           18  ->  18
+  hW=$(printf %04x $2 | sed 's/../&\n/g' | tac | tr '\n' ' ') #     1000  ->        03 e8  ->  e8 03
+  hH=$(printf %04x $3 | sed 's/../&\n/g' | tac | tr '\n' ' ') #     1000  ->        03 e8  ->  e8 03
+  hC=$(printf %08x $4 | sed 's/../&\n/g' | tac | tr '\n' ' ') #  3000000  ->  00 2d c6 c0  ->  c0 c6 2d 00
+  hS=$(printf %08x $5 | sed 's/../&\n/g' | tac | tr '\n' ' ') #  3000122  ->  00 2d c7 3a  ->  3a c7 2d 00
+
+  cabecalho="
+  42 4d ${hS}00 00 00 00 7a 00 00 00 6c 00 00 00 ${hW}00 00 ${hH}00 00 01 00 ${hD}00 00 00 00 00 ${hC}13 0b 00 00 13 0b 00 00 00 00
+  00 00 00 00 00 00 42 47 52 73 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  "
+
+  echo "$cabecalho" | sed 's/^/ /'
+
+  # esse metodo pode ser aplicado blocos de bytes hexa para otimizar o loop byte a byte do processo abaixo
+  hc=\\x$(echo -n $cabecalho | sed 's/ /\\x/g')
+  echo -en "$hc" >| $hd
+
+}
+
+
+
+mkbo()
+# $1 = H
+# $2 = C
+{
+
+  >| $bo
+
+  d=0 # digito #d de 𝜋
+  p=0 # pixel  #p da imagem
+  while ((p<C/3))
+  do
+    comp=0  # componente rgb
+     rgb=""
+    hrgb=""
+    crgb=""
+    # esse loop encadeado é desnecessário, uma vez que basta concatenar os bytes formando as
+    #    tuplas rgb, mas vou deixar por enquanto, por uma questão de lógica.
+    while ((comp<3))
+    do
+      cd=$(cut -c$((d+1)),$((d+2)) $pi) # centena e dezena
+       u=$(cut -c$((d+3))          $pi) # unidade
+      # se o número composto pelo que seria CDU não passa do valor máximo de um byte, usa, senão usa apenas CD e deixa U para o próximo laço como C
+      ((10#$cd$u<256)) && byte=$cd$u || byte=$cd
+          i=$(echo -n $byte | wc -c)
+      hbyte=$(printf %02X $((10#$byte)))
+       byte=$(printf  %3s $((10#$byte)))
+        chr=$(echo -e \\x$hbyte)
+       rgb="$rgb $byte"
+      hrgb="$hrgb $hbyte"
+      crgb="$crgb$chr"
+      ((comp++))
+      ((d+=i))
+    done
+    ((p++))
+    ok=$(LC_ALL=C printf %10.6f $(bc<<<"scale=6;100*$p/($2/3)")) # porcentagem pronta do corpo da imagem
+    echo "$hrgb  - $rgb  -  $ok %  -  px $p/$(($2/3))  -  ln $((p/$1))/$1"
+    # a imagem é armazenada de cabeça para baixo no arquivo bmp mas por simplicidade, por
+    # enquanto não vou inverter os dados, o que significa que a imagem será vizualizada virada.
+    echo -n "$crgb" >> $bo
+  done
+
+}
+
+
+
+if [ $# = 0 ]
+then
+  echo "Uso: $(basename $0) go|view"
+elif [ "$1" = "view" ]
+then
+  nowC=$(stat -c %s $bo)
+  nowS=$((nowC+122))
+  nowP=$((nowC/3))
+  nowH=$((nowP/W))
+  nowEC=$((3*W*nowH))
+  echo
+  echo " color  depth   $D"
+  echo " image  width   $W"
+  echo " now    pixels  $nowP"
+  echo " now    height  $nowH"
+  echo " header size    122: $(stat -c %s $hd)"
+  echo " now i. size    $nowC: $(stat -c %s $bo)"
+  echo " now ef size    $nowEC"
+  echo " now f. size    $nowS: $(stat -c %s $bm)"
+  mkhd $D $W $nowH $nowEC $nowS
+  cat $hd <(cut -c1-$nowEC $bo) >| $bm
+elif [ "$1" = "go" ]
+then
+  mkbo $H $C
+  echo
+  echo " color  depth   $D"
+  echo " image  width   $W"
+  echo " image  height  $H"
+  echo " header size    122: $(stat -c %s $hd)"
+  echo " image  size    $C: $(stat -c %s $bo)"
+  echo " file   size    $S: $(stat -c %s $bm)"
+  mkhd $D $W $H $C $S
+  cat $hd $bo >| $bm
+else
+  echo "Parâmetro desconhecido"
+fi
+
+
+
+# EOF

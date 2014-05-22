@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Arkanon <arkanon@lsd.org.br>
+# 2014/05/22 Thu 03:27:18
+
+# BMP Structure
+
+cat 16x16x01-paint.bmp | od -vtx1 -w1 -Anone | tr a-f A-F | while read b; do printf "%08d\n" $(bc <<< "obase=2;ibase=16;$b"); done >| 16x16x01-paint.txt
+
+cat WxHx24-gimp.bmp | od -vtx1 -N122 -w$((16*3)) -Anone
+# cabecalho, 122 B
+# 42 4d S₁ S₂ S₃ S₄ 00 00 00 00 7a 00 00 00 6c 00 00 00 W₁ W₂ 00 00 H₁ H₂ 00 00 01 00 D₁ 00 00 00 00 00 C₁ C₂ C₃ C₄ 13 0b 00 00 13 0b 00 00 00 00
+# 00 00 00 00 00 00 42 47 52 73 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+# 00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+# 16x16x24-gimp.bmp
+#       7a 03 00 00                                     10 00       10 00             18                00 03 00 00
+printf %02x         24 # D:          18
+printf %04x         16 # W:       00 10
+printf %04x         16 # H:       00 10
+printf %08x        768 # C: 00 00 03 00
+printf %08x        890 # S: 00 00 03 7a
+
+# 1000x1000x24.bmp
+#       3a c7 2d 00                                     e8 03       e8 03             18                c0 c6 2d 00
+printf %02x         24 # D:          18
+printf %04x       1000 # W:       03 e8
+printf %04x       1000 # H:       03 e8
+printf %08x    3000000 # C: 00 2d c6 c0
+printf %08x    3000122 # S: 00 2d c7 3a
+
+# 10000x50000x24.bmp
+#       7a 2f 68 59                                     10 27       50 c3             18                00 2f 68 59
+printf %02x         24 # D:          18
+printf %04x      10000 # W:       27 10
+printf %04x      50000 # H:       c3 50
+printf %08x 1500000000 # C: 59 68 2f 00
+printf %08x 1500000122 # S: 59 68 2f 7a
+
+# bitmap true color, 768 B 
+cat 16x16x24-gimp.bmp | od -vtx1 -j122 -w$((16*3)) -Anone
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff 00 ff 00 00 ff 00 ff ff ff ff ff ff ff ff ff ff 00 00 ff 00 00 ff ff ff ff ff ff ff ff ff 00 ff 00 00 ff 00 ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff 00 ff 00 ff ff ff 00 7f ff 00 7f ff 00 7f ff 00 7f ff 00 7f ff 00 7f ff ff ff ff 00 ff 00 ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff 00 7f ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 7f ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff 00 7f ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 7f ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff 00 7f ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 7f ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff 00 7f ff 00 00 00 00 00 00 00 00 00 00 00 00 00 7f ff 00 00 00 00 00 00 00 00 00 00 7f ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff 00 7f ff 00 00 00 00 00 00 00 00 00 00 7f ff ff ff ff 00 7f ff 00 00 00 00 00 00 00 7f ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff 00 7f ff 00 00 00 00 00 00 00 00 00 00 7f ff 00 00 00 00 00 00 00 7f ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff 00 ff 00 00 7f ff 00 7f ff 00 00 00 00 00 00 00 00 00 00 00 00 00 7f ff 00 7f ff 00 ff 00 ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff 00 ff 00 00 ff 00 ff ff ff ff ff ff 00 7f ff 00 7f ff 00 7f ff 00 7f ff ff ff ff ff ff ff 00 ff 00 00 ff 00 ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 ff 00 00 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 ff 00 00 ff 00 00 ff 00 00 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 ff 00 00 ff 00 00 ff 00 00 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 ff 00 00 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+
+# EOF

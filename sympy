@@ -1,0 +1,24 @@
+#!/usr/bin/python
+
+
+
+# (time ./teste) 2>&1 | tee out
+### ^Z --> [1]+ Stopped --> kill %1 to stop job #1 (or job %1 as bash puts it) 
+
+
+
+# <http://www.python.org.br/wiki/DocumentacaoPython>
+# <http://www.async.com.br/projects/python/pnp/node16.html>
+# <http://ipython.org/ipython-doc/2/parallel/parallel_demos.html>
+
+
+
+import sympy
+print sympy.pi.evalf(pow(10,7))
+# 5 - 00:00:01
+# 6 - 00:00:49
+# 7 - 01:20:49
+
+
+
+# EOF
