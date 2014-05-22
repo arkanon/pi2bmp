@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# Arkanon <arkanon@lsd.org.br>
+# 2014/05/22 Thu 09:47:45
+
+# 𝜋2bmp
+#
+# Método 1: Tendo as primeiras N casas decimais de 𝜋, percorre-as da mais para a menos
+#              significativa agrupando os dígitos decimais em números de 3 dígitos.
+#           Se o valor for menor que 256, considera uma componente RGB, senão, considera
+#              apenas os dois primeiros dígitos.
+#           Repete o processo em tuplas de componentes com 2 ou 3 dígitos, consideradas
+#              pontos de um BMP de WxH pixels, enquanto for possível completar linhas da
+#              imagem com os dígitos dispoiníveis.
+#
+#           A transformação sequencial de todos os dígitos calculados de 𝜋 em tuplas rgb
+#              decimais para posterior conversão em trincas de bytes representando pixels
+#              independe das dimensões que se deseja a imagem. Podemos perfeitamente usar
+#              qualquer substring da string resultante da concatenação de todos os bytes
+#              desde que preencham um retângulo cujas dimensões e características enquanto
+#              área de um bmp esteja adequadamente descritas no cabeçalho.
+#
+#           Assim, o script deixará de se focar na conversão em bmp, e passará a se focar
+#              na conversão dos dígitos em sequências de bytes independentemente, inclusive,
+#              de caracterização como trinca rgb.
+#
+# TODO
+# -- implementar em js+canvas
+# -- implementar em python
+# -- otimizar de acordo com as anotacoes do codigo
+# -- verificar se realmente a primeira linha fica  escura após os primeiros pixels ou se tem algum problema no algoritmo
+# -- mostrar sempre a porcentagem de uso dos dígitos
+# -- marcar quando o script começou a rodar e mostrar sempre o tempo de execução, a velocidade em px e dg/s e uma previsão de quando vai terminar
+# -- armazenar o estado a cada iteração para permitir interrupção e reinício
+# -- erro no calculo da linha, mas afeta apenas a informação mostrada
+# -- o algoritmo esta usando apenas 1 digito decimal para algumas componentes rgb, mas elas deveria ter pelo menos 2 dígitos, sempre
+# -- montar os dados de forma a imagem não ficar de cabeça para baixo
+# -- paralelizar
+# -- ler blocos de dígitos para a memória ao inves de ler cada digito diretamente do arquivo
+# ok mostrar que coluna da linha está sendo criada
+# ok contar quantos digitos foram usados (mais de WxHx3x2 e menos de WxHx3x3)
+# ok colocar no nome dos arquivos as dimensões da imagem
+
+
+
+  pi=pi.txt     # arquivo com ps dígitos decimais de 𝜋, calculados em Python com [print sympy.pi.evalf(pow(10,7))] # 01:20:49
+ bin=pi-01.bin  # arquivo do método 1 com a string dos dígitos agrupados em duplas ou trios, conforme o número resultante seja interpretável como um byte (99..255)
+stat=pi-01.stat # arquivo dp método 1 com o registro da posição do último dígito de 𝜋 utilizado na conversão 
+
+
+
+# Cada dígito $d de 𝜋 é um dígito $b na 1ª, 2ª ou 3ª posição em um byte
+# Em $stat serão armazenados na forma '$d\t$b'
+# Se $b == 1, será só continuar o processo, senão, precisará recuperar 1 ou 2 dígitos anteriores de 𝜋. Isso pode ser facilitado aumentado o número de arquivos de stat e fazern rotação entre eles.
+
+dig2byte()
+{
+  N=$(stat -c %s $pi)
+  d=0
+  while ((d<N))
+  do
+     cd=$(cut -c$((d+1)),$((d+2)) $pi)       # centena e dezena
+      u=$(cut -c$((d+3))          $pi)       # unidade
+    dec=$cd && ((10#$cd$u<256)) && dec=$cd$u # se o número composto pelo que seria CDU não passa do valor máximo de um byte, usa, senão usa apenas CD e deixa U para o próximo laço como C
+    hex=$(printf %02X $((10#$dec)))
+    chr=$(echo -e \\x$hex)
+      i=$(echo -n $dec | wc -c)
+   ((d+=i))
+    echo -n "$chr" >> $bin
+  done
+}
+
+
+
+mkbmp()
+{
+
+  hd=pi-${W}x${H}-head.bmp
+  bo=pi-${W}x${H}-body.bmp
+  bm=pi-${W}x${H}.bmp
+
+  W=$1         # image width  pixels
+  H=$2         # image height pixels
+  D=24         # color depth bits
+  C=$((3*W*H)) # image size  bytes (3 B/px, se D=24)
+  S=$((C+122)) # file  size  bytes
+
+  hD=$(printf %02x $D | sed 's/../&\n/g' | tac | tr '\n' ' ') #       24  ->           18  ->  18
+  hW=$(printf %04x $W | sed 's/../&\n/g' | tac | tr '\n' ' ') #     1000  ->        03 e8  ->  e8 03
+  hH=$(printf %04x $H | sed 's/../&\n/g' | tac | tr '\n' ' ') #     1000  ->        03 e8  ->  e8 03
+  hC=$(printf %08x $C | sed 's/../&\n/g' | tac | tr '\n' ' ') #  3000000  ->  00 2d c6 c0  ->  c0 c6 2d 00
+  hS=$(printf %08x $S | sed 's/../&\n/g' | tac | tr '\n' ' ') #  3000122  ->  00 2d c7 3a  ->  3a c7 2d 00
+
+  cabecalho="
+  42 4d ${hS}00 00 00 00 7a 00 00 00 6c 00 00 00 ${hW}00 00 ${hH}00 00 01 00 ${hD}00 00 00 00 00 ${hC}13 0b 00 00 13 0b 00 00 00 00
+  00 00 00 00 00 00 42 47 52 73 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  "
+
+  echo "$cabecalho" | sed 's/^/ /'
+
+  # esse metodo pode ser aplicado blocos de bytes hexa para otimizar o loop byte a byte do processo abaixo
+  hc=\\x$(echo -n $cabecalho | sed 's/ /\\x/g')
+  echo -en "$hc" >| $hd
+
+}
+
+
+
+if [ $# = 0 ]
+then
+  echo "Uso: $(basename $0) go|view"
+elif [ "$1" = "view" ]
+then
+  nowC=$(stat -c %s $bo)
+  nowS=$((nowC+122))
+  nowP=$((nowC/3))
+  nowH=$((nowP/W))
+  nowEC=$((3*W*nowH))
+  echo
+  echo " color  depth   $D"
+  echo " image  width   $W"
+  echo " now    pixels  $nowP"
+  echo " now    height  $nowH"
+  echo " header size    122: $(stat -c %s $hd)"
+  echo " now i. size    $nowC: $(stat -c %s $bo)"
+  echo " now ef size    $nowEC"
+  echo " now f. size    $nowS: $(stat -c %s $bm)"
+  mkhd $D $W $nowH $nowEC $nowS
+  cat $hd <(cut -c1-$nowEC $bo) >| $bm
+elif [ "$1" = "go" ]
+then
+  mkbo $W $H $C
+  echo
+  echo " dígitos usados $d/$((9*W*H)) = $(bc<<<"scale=2;100*($d)/(9*$W*$H)")%"
+  echo " color  depth   $D"
+  echo " image  width   $W"
+  echo " image  height  $H"
+  echo " header size    122: $(stat -c %s $hd)"
+  echo " image  size    $C: $(stat -c %s $bo)"
+  echo " file   size    $S: $(stat -c %s $bm)"
+  mkhd $D $W $H $C $S
+  cat $hd $bo >| $bm
+else
+  echo "Parâmetro desconhecido"
+fi
+
+
+
+# EOF

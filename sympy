@@ -14,10 +14,11 @@
 
 
 import sympy
-print sympy.pi.evalf(pow(10,7))
+print sympy.pi.evalf(pow(10,8))
 # 5 - 00:00:01
 # 6 - 00:00:49
 # 7 - 01:20:49
+# 8 - 00:00:00
 
 
 
