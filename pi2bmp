@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Arkanon <arkanon@lsd.org.br>
-# 2014/05/22 Thu 08:12:20
+# 2014/05/22 Thu 08:19:33
 
 # 𝜋2bmp
 #
@@ -20,6 +20,7 @@
 # -- verificar se realmente a primeira linha fica  escura após os primeiros pixels ou se tem algum problema no algoritmo
 # -- mostrar sempre a porcentagem de uso dos dígitos
 # -- marcar quando o script começou a rodar e mostrar sempre o tempo de execução, a velocidade em px e dg/s e uma previsão de quando vai terminar
+# -- armazenar o estado a cada iteração para permitir interrupção e reinício
 # ok mostrar que coluna da linha está sendo criada
 # ok contar quantos digitos foram usados (mais de WxHx3x2 e menos de WxHx3x3)
 # ok colocar no nome dos arquivos as dimensões da imagem
